@@ -1,4 +1,4 @@
-packages <- c("googleLanguageR", "cld2", "textcat","tidyverse", "datasets")
+packages <- c("googleLanguageR", "cld2", "tidyverse", "datasets")
 install.packages(packages, repos = 'http://cran.us.r-project.org')
 lapply(packages, require, character.only=TRUE)
 
