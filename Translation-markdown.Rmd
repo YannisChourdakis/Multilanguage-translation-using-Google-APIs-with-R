@@ -1,54 +1,52 @@
 ---
-title: "Translate a dataset of string data using the Google Cloud Translation"
-author: "Yannis Chourdakis"
-date: "26/04/2020"
+title: "Translate string data using the googleLanguageR package"
 output:
-  html_document: default
-  pdf_document: default
-geometry: margin=1in
-fontfamily: mathpazo
-fontsize: 11pt
+  #html_document:
+    #theme: rmdformats::readthedown
+    prettydoc::html_pretty:
+      theme: leonids
+    toc: yes
+    toc_depth: 3
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+#date: "`r format(Sys.time(), '%d %B %Y')`"
+author: "Yannis Chourdakis"
 ---
+## Intro
 
-```{r setup, include=FALSE}
+The `googleLanguageR` provides useful functions to translate strings within R through the Google Cloud Translation. The quality of the translation is admittedly very good although it cannot yet replace that of professional translation services. However, this package succeeds since it eliminates the time to translate, for example, survey data or any other type of it that happen to contain character variables in small segments in an unwished language. A disadvantage will always be that it comes at a price though quite affordable for tasks similar to the ones described in this article. For taking full advantage of this package, one should subscribe with the Google Cloud Services to obtain the API autorisation.
+
+*For more information on the process read [here](https://cran.r-project.org/web/packages/gargle/vignettes/get-api-credentials.html).*
+
+Make sure to load the following packages in order to complete this task and have your .json authorisation file stored in your working directory for R to be able to call it. We will use it later in the `gl_auth()` function.
+
+```{r packages, include= TRUE}
+packages <- c("googleLanguageR", "cld2","tidyverse", "datasets")
+```
+
+```{r setup, include= FALSE, message= FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-packages <- c("googleLanguageR", "cld2", "textcat","tidyverse", "datasets")
 install.packages(packages, repos = 'http://cran.us.r-project.org')
 lapply(packages, require, character.only=TRUE)
 ```
 
+## Load and prepare the dataset `sentences`
 
-## First step: Google Translation API authorisation
-
-*(read more about access to Google services through APIs  [here](https://cran.r-project.org/web/packages/gargle/vignettes/get-api-credentials.html))*. 
-
-Your .json authorisation file should be copied in your working directory for R to be able to call it. We will call it later in the ```gl_auth()``` function
-
-
-## Second step: Getting and preparing the string data
-
-Here we use the ```sentences``` dataset of the ```datasets``` package.
-
-
-```{r}
+Here we will make use of the `sentences` dataset included in the `datasets` package. When inspecting the dataset we realise that it contains one string variable which is already in a tidy form. 
+```{r dataset, warning= FALSE}
 str(sentences)
-```
-
-```{r}
 head(sentences)
 ```
+In a real-life scenario, we would need to tide up and bring the variable in our wished form. As part of the current process I use the function `first_letter_upper` to capitalize the first letter of each sentence but prior to that we need to remove any leading, trailing or repeated whitespace in it with `str_squish`. This process may partly cover what would be needed if the data was in an untidy form.
 
-In case the words were not capitalised, the following function capitalises the first letter of each sentence of the string data:
-
-```{r}
+```{r first-letter-upper, warning= FALSE}
 first_letter_upper=function(x) ifelse(is.na(x)==TRUE, NA, paste0(toupper(substr(x, 1, 1)), tolower(substring(x, 2))))
 ```
 
-Let's clean the string data to prepare it for the translation:
-
-```{r}
-sentences_new <- sentences %>% 
-  sapply(., str_trim) %>%
+```{r data-wrangling, warning= FALSE}
+sentences_new <- head(sentences) %>% 
+  # I added the head() function above to not have to translate every single element in this long dataset. It should be removed in actual translations.
   sapply(., str_squish) %>%
   sapply(., first_letter_upper) %>%
   na.omit %>%
@@ -57,17 +55,28 @@ sentences_new <- sentences %>%
 (*If your dataset has multiple columns you may use ```lapply()``` instead of ```sapply()```*)
 
 
-## Third step: Kick-off by detecting the language of the existing data:
+## Detect the current language of `sentences`
 
-```{r}
-detected_language <- sentences_new %>% sapply(., map_chr, detect_language) %>% data.frame
+The `gl_translate` function of the `googleLanguageR` package only requires the `target=` language to be defined. However, since the Google Authorisation API comes with credit which is reduced every time a word is translated we can apply few tricks to reduce our cost:
+
+1. Avoid translating sentences that are already in your target language by first detecting the existing language with `detect_language` of the package `cld2` instead of the `googleLanguageR`. 
+2. Select only the rows that are in a language which you wish to translate and not all of your elements.
+
+
+In practice, the following code chunk returns an object of identical dimensions with the detected language annotations:
+
+```{r detect-language, warning= FALSE}
+detected_language <- sentences_new %>% 
+  sapply(., map_chr, detect_language) %>% 
+  data.frame(check.names = FALSE)
 ```
 
-Let's annotate the ones that will be translated during our process in order to know which elements were translated by us:
 
-*(here we translate every element thus we expect all of them to be annotated)*
+Using the indexes of the language-tagged elements we can exclude a language that we do not intend to translate or we can select only one to do so with the use of logical operators.  As a first step we can add a **(Translated)** annotation to every element of `sentences_new` in order to always be able to recognise which ones were translated by us:
 
-```{r}
+*(here we translate every language-tagged element thus we expect all of them to be annotated)*
+
+```{r add-indication-for-translated, warning= FALSE, message=FALSE}
 #for (i in 1:ncol(sentences_new)){
   for (k in 1:nrow(sentences_new)){
     sentences_new[k,][detected_language[k,] =="en"] <- 
@@ -75,26 +84,24 @@ Let's annotate the ones that will be translated during our process in order to k
     }
 #}
 ```
-(*If the object sentences_new had multiple columns we would need to uncomment the outer for-loop)*)
+(*If the object `sentences_new` had multiple columns we would need to uncomment the outer for-loop*)
 
-## Ready to initiate the translation!
-*All sentences are in english therefore we choose to translate them to Italian. Note that this step will need a fair amount of time to execute*
+## Translate `sentences_new` to Italian
+All sentences are in english therefore we choose to translate them to Italian:
 
-```{r message=FALSE, warning=FALSE,}
+```{r translation, warning= FALSE}
 gl_auth("google_api_auth.json")
 
 for (i in 1:ncol(sentences_new)){
+  # we replace all the elements in sentences_new that are =="en":
   sentences_new[,i][detected_language[,i] =="en" & !is.na(detected_language[,i])] <- 
-    data.frame(
-      gl_translate(
-        sentences_new[,i][detected_language[,i] =="en" & !is.na(detected_language[,i])], target = "it"
-        )
-      )[,1]
+    # with their translation (gl_translate) to target="it" then we transform it to a dataframe and makes sure all missing values are in NA form:
+    data.frame(gl_translate(sentences_new[,i][detected_language[,i] =="en" & !is.na(detected_language[,i])], target = "it"))[,1]
   
   sentences_new[,i][sentences_new[,i] %in% c("NA", "N/a", "N/A", "Na", "na", "n/a", "not applicable")] <- NA
-  }
-
-head(sentences_new)
+}
 ```
 
-## Success!
+```{r, warning= FALSE}
+head(sentences_new)
+```
