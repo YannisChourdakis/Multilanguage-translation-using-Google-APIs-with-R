@@ -1,5 +1,5 @@
 ---
-title: "Translate string data using the googleLanguageR package"
+title: "Translate strings using the googleLanguageR package"
 output:
   #html_document:
     #theme: rmdformats::readthedown
@@ -15,7 +15,7 @@ author: "Yannis Chourdakis"
 ---
 ## Intro
 
-The `googleLanguageR` provides useful functions to translate strings within R through the Google Cloud Translation. The quality of the translation is admittedly very good although it cannot yet replace that of professional translation services. However, this package succeeds since it eliminates the time to translate, for example, survey data or any other type of it that happen to contain character variables in small segments in an unwished language. A disadvantage will always be that it comes at a price though quite affordable for tasks similar to the ones described in this article. For taking full advantage of this package, one should subscribe with the Google Cloud Services to obtain the API autorisation.
+The `googleLanguageR` provides useful functions to translate strings within R through the Google Cloud Translation. The quality of the translation is admittedly very good although it cannot yet replace that of professional translation services. However, this package succeeds since it eliminates the time to translate, for example, survey data or any other type of it that happen to contain character variables in small segments in an unwished language. A disadvantage will always be that it comes at a price though quite affordable for tasks similar to the ones described in this article. For taking full advantage of this package, one should subscribe with the Google Cloud Services to obtain the API authorisation.
 
 *For more information on the process read [here](https://cran.r-project.org/web/packages/gargle/vignettes/get-api-credentials.html).*
 
